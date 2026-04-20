@@ -1,0 +1,69 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: docai
+      POSTGRES_PASSWORD: docai_secret
+      POSTGRES_DB: docai
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - docai-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    networks:
+      - docai-net
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - docai-net
+
+  minio:
+    image: minio/minio:latest
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports:
+      - "9000:9000"
+    networks:
+      - docai-net
+
+  web:
+    build: .
+    depends_on:
+      - postgres
+      - redis
+      - elasticsearch
+      - minio
+    networks:
+      - docai-net
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:
+
+networks:
+  docai-net:
+    driver: bridge

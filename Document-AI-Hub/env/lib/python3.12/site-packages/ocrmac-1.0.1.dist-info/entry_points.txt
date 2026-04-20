@@ -1,0 +1,2 @@
+[console_scripts]
+ocrmac = ocrmac.cli:main
